@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FPB Matemáticas – Juego y Marcador</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #0a0f24;
+        color: white;
+        margin: 0;
+        padding: 20px;
+        text-align: center;
+    }
+    h1 { margin-top: 10px; }
+    .hidden { display: none; }
+
+    .card {
+        background: #162040;
+        padding: 20px;
+        border-radius: 12px;
+        margin: 20px auto;
+        max-width: 500px;
+    }
+    input, button {
+        padding: 14px;
+        font-size: 1.2rem;
+        width: 100%;
+        margin-top: 10px;
+        border-radius: 10px;
+        border: none;
+    }
+    button { background: #1e3fa3; color: white; }
+
+    /* Marcador */
+    #scoreboard div {
+        background: #112255;
+        padding: 12px;
+        margin: 8px 0;
+        display: flex;
+        justify-content: space-between;
+        border-radius: 8px;
+        font-size: 1.5rem;
+    }
+
+    /* Pregunta */
+    #question {
+        font-size: 2rem;
+        margin: 20px 0;
+    }
+
+    #timer {
+        font-size: 1.8rem;
+        color: #ffd166;
+        margin: 10px 0;
+    }
+</style>
+
+</head>
+<body>
+
+<h1>FPB Matemáticas 💡</h1>
+
+<div id="modeSelect" class="card">
+    <h2>Selecciona modo</h2>
+    <button onclick="goToGame()">Jugar (Alumnado)</button>
+    <button onclick="goToScoreboard()">Ver Marcador</button>
+</div>
+
+<!-- JUEGO -->
+<div id="game" class="card hidden">
+    <h2>Juego – Equipo <span id="teamLabel"></span></h2>
+
+    <div id="timer">Tiempo: 30s</div>
+
+    <div id="question">Pulsa "Nueva Pregunta"</div>
+
+    <input id="answer" type="number" placeholder="Tu respuesta">
+    <button onclick="checkAnswer()">Enviar respuesta</button>
+    <button onclick="newQuestion()">Nueva pregunta</button>
+
+    <div id="feedback" style="font-size:1.4rem;margin-top:12px;"></div>
+</div>
+
+<!-- MARCADOR -->
+<div id="scoreboardCard" class="card hidden" style="max-width:600px">
+    <h2>Marcador General</h2>
+    <div id="scoreboard"></div>
+</div>
+
+<script>
+/*----------------------------------------------------------
+   PARÁMETROS
+-----------------------------------------------------------*/
+let totalTeams = 6;           // Número de equipos en tu clase
+let correctAnswer = null;
+let currentTeam = null;
+let timeLeft = 30;
+let timerInterval = null;
+
+/*----------------------------------------------------------
+   DETECTAR SI ES EQUIPO O MARCADOR
+-----------------------------------------------------------*/
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has("team")) {
+    currentTeam = parseInt(urlParams.get("team"));
+    document.getElementById("modeSelect").classList.add("hidden");
+    document.getElementById("game").classList.remove("hidden");
+    document.getElementById("teamLabel").textContent = currentTeam;
+}
+
+/*----------------------------------------------------------
+   NAVEGACIÓN ENTRE MODOS
+-----------------------------------------------------------*/
+function goToGame() {
+    alert("Cada equipo debe entrar con una URL como:\n\n?team=1 , ?team=2 , etc.\n\nEjemplo:\nhttps://TUUSUARIO.github.io/TUREPO/?team=1");
+}
+function goToScoreboard() {
+    document.getElementById("modeSelect").classList.add("hidden");
+    document.getElementById("scoreboardCard").classList.remove("hidden");
+    renderScoreboard();
+    setInterval(renderScoreboard, 1500);
+}
+
+/*----------------------------------------------------------
+   MARCADOR GLOBAL (almacenado localmente)
+-----------------------------------------------------------*/
+function getScores() {
+    let scores = localStorage.getItem("teamScores");
+    if (!scores) {
+        scores = {};
+        for (let i = 1; i <= totalTeams; i++) scores[i] = 0;
+        localStorage.setItem("teamScores", JSON.stringify(scores));
+    }
+    return JSON.parse(scores);
+}
+
+function updateScore(team, amount) {
+    let s = getScores();
+    s[team] += amount;
+    localStorage.setItem("teamScores", JSON.stringify(s));
+}
+
+/* Marcador para pantalla */
+function renderScoreboard() {
+    let s = getScores();
+    let sorted = Object.entries(s).sort((a,b) => b[1] - a[1]);
+    let box = document.getElementById("scoreboard");
+    box.innerHTML = "";
+    sorted.forEach(([team, points]) => {
+        box.innerHTML += `<div><strong>Equipo ${team}</strong> <span>${points}</span></div>`;
+    });
+}
+
+/*----------------------------------------------------------
+   PREGUNTAS + TIMER
+-----------------------------------------------------------*/
+function newQuestion() {
+    const a = Math.floor(Math.random()*10)+1;
+    const b = Math.floor(Math.random()*10)+1;
+    const ops = ["+","-","*"];
+    const op = ops[Math.floor(Math.random()*ops.length)];
+
+    correctAnswer = eval(`${a} ${op} ${b}`);
+    document.getElementById("question").textContent = `${a} ${op} ${b}`;
+    document.getElementById("feedback").textContent = "";
+    document.getElementById("answer").value = "";
+
+    startTimer();
+}
+
+function startTimer() {
+    clearInterval(timerInterval);
+    timeLeft = 30;
+    document.getElementById("timer").textContent = "Tiempo: 30s";
+
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById("timer").textContent = "Tiempo: " + timeLeft + "s";
+
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            document.getElementById("feedback").textContent = "⏳ Tiempo terminado";
+        }
+    }, 1000);
+}
+
+function checkAnswer() {
+    let ans = parseFloat(document.getElementById("answer").value);
+    if (ans === correctAnswer) {
+        document.getElementById("feedback").textContent = "✔ Correcto (+10)";
+        updateScore(currentTeam, 10);
+    } else {
+        document.getElementById("feedback").textContent = "✘ Incorrecto";
+    }
+}
+</script>
+
+</body>
+</html>
